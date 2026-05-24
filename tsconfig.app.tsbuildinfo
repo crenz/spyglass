@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/engine/machine.ts","./src/engine/scenes/splash.ts","./src/loaders/bundled.ts","./src/loaders/fetchsafe.ts","./src/loaders/types.ts","./src/player/playerview.tsx","./src/player/a11ylayer/a11ylayer.tsx","./src/player/splash/splash.tsx","./src/schema/game.ts","./src/schema/migrate.ts","./src/state/playerstore.ts"],"version":"5.9.3"}
