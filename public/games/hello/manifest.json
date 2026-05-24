@@ -1,6 +1,6 @@
 {
   "id": "hello",
-  "version": 3,
+  "version": 4,
   "title": "Hello, Spyglass",
   "startScene": "title",
   "scenes": [
@@ -33,33 +33,52 @@
       "regions": [
         {
           "id": "t_key",
+          "kind": "target",
           "shape": "rect",
           "rect": { "x": 80, "y": 180, "w": 80, "h": 80 }
         },
         {
           "id": "t_book",
-          "shape": "rect",
-          "rect": { "x": 420, "y": 260, "w": 90, "h": 80 }
+          "kind": "target",
+          "shape": "polygon",
+          "polygon": {
+            "points": [
+              [420, 260],
+              [510, 270],
+              [505, 340],
+              [415, 335]
+            ]
+          }
         },
         {
           "id": "t_cup",
-          "shape": "rect",
-          "rect": { "x": 720, "y": 140, "w": 80, "h": 80 }
+          "kind": "target",
+          "shape": "circle",
+          "circle": { "cx": 760, "cy": 180, "r": 42 }
         },
         {
           "id": "r_key",
+          "kind": "reference",
           "shape": "rect",
           "rect": { "x": 100, "y": 620, "w": 80, "h": 80 }
         },
         {
           "id": "r_book",
+          "kind": "reference",
           "shape": "rect",
           "rect": { "x": 320, "y": 620, "w": 80, "h": 80 }
         },
         {
           "id": "r_cup",
+          "kind": "reference",
           "shape": "rect",
           "rect": { "x": 540, "y": 620, "w": 80, "h": 80 }
+        },
+        {
+          "id": "hint_btn",
+          "kind": "hint",
+          "shape": "rect",
+          "rect": { "x": 900, "y": 640, "w": 90, "h": 60 }
         }
       ],
       "objectives": [

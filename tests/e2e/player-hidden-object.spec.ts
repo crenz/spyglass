@@ -56,4 +56,22 @@ test.describe("hidden object scene", () => {
     await page.getByRole("button", { name: /brass key/i }).click();
     await expect(page.getByRole("status")).toContainText(/found: brass key/i);
   });
+
+  test("clicking the hint control announces a hint", async ({ page }) => {
+    await goToHog(page);
+    await page.getByRole("button", { name: /^hint$/i }).click();
+    await expect(page.getByRole("status")).toContainText(/hint:.*brass key/i);
+    await expect(
+      page.getByRole("button", { name: /brass key/i }),
+    ).toHaveAttribute("data-hint", "true");
+  });
+
+  test("hint control is reachable by keyboard", async ({ page }) => {
+    await goToHog(page);
+    const hint = page.getByRole("button", { name: /^hint$/i });
+    await hint.focus();
+    await expect(hint).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("status")).toContainText(/hint:/i);
+  });
 });

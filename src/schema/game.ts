@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 const sceneIdSchema = z
   .string()
@@ -84,11 +84,56 @@ const rectSchema = z.object({
   h: z.number().int().positive(),
 });
 
-export const regionSchema = z.object({
+const polygonPointSchema = z.tuple([
+  z.number().nonnegative(),
+  z.number().nonnegative(),
+]);
+
+const polygonSchema = z.object({
+  points: z.array(polygonPointSchema).min(3),
+});
+
+const circleShapeSchema = z.object({
+  cx: z.number().nonnegative(),
+  cy: z.number().nonnegative(),
+  r: z.number().positive(),
+});
+
+export const REGION_KINDS = [
+  "target",
+  "reference",
+  "hint",
+  "menu",
+  "pause",
+] as const;
+export const regionKindSchema = z.enum(REGION_KINDS);
+
+const rectRegionSchema = z.object({
   id: regionIdSchema,
+  kind: regionKindSchema,
   shape: z.literal("rect"),
   rect: rectSchema,
 });
+
+const polygonRegionSchema = z.object({
+  id: regionIdSchema,
+  kind: regionKindSchema,
+  shape: z.literal("polygon"),
+  polygon: polygonSchema,
+});
+
+const circleRegionSchema = z.object({
+  id: regionIdSchema,
+  kind: regionKindSchema,
+  shape: z.literal("circle"),
+  circle: circleShapeSchema,
+});
+
+export const regionSchema = z.discriminatedUnion("shape", [
+  rectRegionSchema,
+  polygonRegionSchema,
+  circleRegionSchema,
+]);
 
 export const objectiveSchema = z.object({
   id: objectiveIdSchema,
@@ -120,16 +165,16 @@ function refineHiddenObjectScene(
   ctx: z.RefinementCtx,
   pathPrefix: (string | number)[] = [],
 ): void {
-  const regionIds = new Set<string>();
+  const regionsById = new Map<string, (typeof scene.regions)[number]>();
   for (const region of scene.regions) {
-    if (regionIds.has(region.id)) {
+    if (regionsById.has(region.id)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Duplicate region ID: "${region.id}".`,
         path: [...pathPrefix, "regions"],
       });
     }
-    regionIds.add(region.id);
+    regionsById.set(region.id, region);
   }
   const objectiveIds = new Set<string>();
   for (const objective of scene.objectives) {
@@ -141,17 +186,31 @@ function refineHiddenObjectScene(
       });
     }
     objectiveIds.add(objective.id);
-    if (!regionIds.has(objective.targetRegionId)) {
+    const target = regionsById.get(objective.targetRegionId);
+    if (!target) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Objective "${objective.id}" references unknown target region "${objective.targetRegionId}".`,
         path: [...pathPrefix, "objectives"],
       });
+    } else if (target.kind !== "target") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Objective "${objective.id}" target region "${objective.targetRegionId}" has kind "${target.kind}" (expected "target").`,
+        path: [...pathPrefix, "objectives"],
+      });
     }
-    if (!regionIds.has(objective.referenceRegionId)) {
+    const reference = regionsById.get(objective.referenceRegionId);
+    if (!reference) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `Objective "${objective.id}" references unknown reference region "${objective.referenceRegionId}".`,
+        path: [...pathPrefix, "objectives"],
+      });
+    } else if (reference.kind !== "reference") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Objective "${objective.id}" reference region "${objective.referenceRegionId}" has kind "${reference.kind}" (expected "reference").`,
         path: [...pathPrefix, "objectives"],
       });
     }
@@ -243,7 +302,13 @@ export type SplashScene = z.infer<typeof splashSceneSchema>;
 export type CutsceneSkipPolicy = z.infer<typeof cutsceneSkipPolicySchema>;
 export type CutsceneScene = z.infer<typeof cutsceneSceneSchema>;
 export type Rect = z.infer<typeof rectSchema>;
+export type Polygon = z.infer<typeof polygonSchema>;
+export type CircleShape = z.infer<typeof circleShapeSchema>;
+export type RegionKind = z.infer<typeof regionKindSchema>;
 export type Region = z.infer<typeof regionSchema>;
+export type RectRegion = z.infer<typeof rectRegionSchema>;
+export type PolygonRegion = z.infer<typeof polygonRegionSchema>;
+export type CircleRegion = z.infer<typeof circleRegionSchema>;
 export type Objective = z.infer<typeof objectiveSchema>;
 export type HiddenObjectScene = z.infer<typeof hiddenObjectSceneSchema>;
 export type Scene = z.infer<typeof sceneSchema>;

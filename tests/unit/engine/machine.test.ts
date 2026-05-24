@@ -4,7 +4,7 @@ import { gameSchema, type Game } from "@/schema/game";
 
 const game: Game = gameSchema.parse({
   id: "hello",
-  version: 3,
+  version: 4,
   title: "Hello",
   startScene: "title",
   scenes: [
@@ -45,7 +45,7 @@ const game: Game = gameSchema.parse({
 
 const hogGame: Game = gameSchema.parse({
   id: "hog",
-  version: 3,
+  version: 4,
   title: "HOG",
   startScene: "scene_1",
   scenes: [
@@ -55,10 +55,30 @@ const hogGame: Game = gameSchema.parse({
       title: "Find things",
       image: { src: "images/scene-1.png", width: 1024, height: 768 },
       regions: [
-        { id: "t_a", shape: "rect", rect: { x: 10, y: 10, w: 20, h: 20 } },
-        { id: "r_a", shape: "rect", rect: { x: 100, y: 600, w: 50, h: 50 } },
-        { id: "t_b", shape: "rect", rect: { x: 50, y: 50, w: 30, h: 30 } },
-        { id: "r_b", shape: "rect", rect: { x: 200, y: 600, w: 50, h: 50 } },
+        {
+          id: "t_a",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 10, y: 10, w: 20, h: 20 },
+        },
+        {
+          id: "r_a",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 100, y: 600, w: 50, h: 50 },
+        },
+        {
+          id: "t_b",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 50, y: 50, w: 30, h: 30 },
+        },
+        {
+          id: "r_b",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 200, y: 600, w: 50, h: 50 },
+        },
       ],
       objectives: [
         {
@@ -250,7 +270,7 @@ describe("engine.dispatch — hidden_object", () => {
   it("ends the game when onComplete.gotoSceneId is null", () => {
     const game: Game = gameSchema.parse({
       id: "hog2",
-      version: 3,
+      version: 4,
       title: "HOG2",
       startScene: "only",
       scenes: [
@@ -259,8 +279,18 @@ describe("engine.dispatch — hidden_object", () => {
           kind: "hidden_object",
           image: { src: "images/x.png", width: 100, height: 100 },
           regions: [
-            { id: "t1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
-            { id: "r1", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+            {
+              id: "t1",
+              kind: "target",
+              shape: "rect",
+              rect: { x: 0, y: 0, w: 10, h: 10 },
+            },
+            {
+              id: "r1",
+              kind: "reference",
+              shape: "rect",
+              rect: { x: 20, y: 0, w: 10, h: 10 },
+            },
           ],
           objectives: [
             {
@@ -284,5 +314,100 @@ describe("engine.dispatch — hidden_object", () => {
     const snapshot = JSON.stringify(state1);
     dispatch(hogGame, state1, { type: "find", objectiveId: "a" });
     expect(JSON.stringify(state1)).toBe(snapshot);
+  });
+});
+
+describe("engine.dispatch — control actions", () => {
+  it("init seeds paused=false, menuOpen=false, hintRequest=null", () => {
+    const state = init(hogGame);
+    expect(state.paused).toBe(false);
+    expect(state.menuOpen).toBe(false);
+    expect(state.hintRequest).toBeNull();
+  });
+
+  it("pause toggles when no explicit value is given", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "pause" });
+    expect(state.paused).toBe(true);
+    state = dispatch(hogGame, state, { type: "pause" });
+    expect(state.paused).toBe(false);
+  });
+
+  it("pause accepts an explicit value", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "pause", paused: true });
+    expect(state.paused).toBe(true);
+    state = dispatch(hogGame, state, { type: "pause", paused: true });
+    expect(state.paused).toBe(true);
+    state = dispatch(hogGame, state, { type: "pause", paused: false });
+    expect(state.paused).toBe(false);
+  });
+
+  it("menu toggles when no explicit value is given", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "menu" });
+    expect(state.menuOpen).toBe(true);
+    state = dispatch(hogGame, state, { type: "menu" });
+    expect(state.menuOpen).toBe(false);
+  });
+
+  it("menu accepts an explicit open value", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "menu", open: true });
+    expect(state.menuOpen).toBe(true);
+    state = dispatch(hogGame, state, { type: "menu", open: false });
+    expect(state.menuOpen).toBe(false);
+  });
+
+  it("hint records a request pointing at the next unfound objective in the active HOG scene", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "hint" });
+    expect(state.hintRequest?.sceneId).toBe("scene_1");
+    expect(state.hintRequest?.objectiveId).toBe("a");
+    expect(state.hintRequest?.seq).toBe(1);
+  });
+
+  it("hint requests advance the seq counter even when the same objective is targeted", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "hint" });
+    const seq1 = state.hintRequest?.seq ?? 0;
+    state = dispatch(hogGame, state, { type: "hint" });
+    expect(state.hintRequest?.seq).toBeGreaterThan(seq1);
+  });
+
+  it("hint skips already-found objectives", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    state = dispatch(hogGame, state, { type: "hint" });
+    expect(state.hintRequest?.objectiveId).toBe("b");
+  });
+
+  it("hint is a no-op when the current scene is not a hidden-object scene", () => {
+    let state = init(game);
+    const before = state;
+    state = dispatch(game, state, { type: "hint" });
+    expect(state).toBe(before);
+  });
+
+  it("hint is a no-op when every objective is already found (auto-advance leaves HOG)", () => {
+    // Setting up: from hogGame, find both objectives -> auto-advances to "end" splash.
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "b" });
+    const before = state;
+    state = dispatch(hogGame, state, { type: "hint" });
+    expect(state).toBe(before);
+  });
+
+  it("control actions are no-ops after the game is done", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "b" });
+    state = dispatch(hogGame, state, { type: "advance" });
+    expect(state.done).toBe(true);
+    const before = state;
+    expect(dispatch(hogGame, state, { type: "pause" })).toBe(before);
+    expect(dispatch(hogGame, state, { type: "menu" })).toBe(before);
+    expect(dispatch(hogGame, state, { type: "hint" })).toBe(before);
   });
 });

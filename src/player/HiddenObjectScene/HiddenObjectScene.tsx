@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type {
   HiddenObjectScene as HiddenObjectSceneType,
   Region,
+  RegionKind,
   Objective,
 } from "@/schema/game";
 import type { LoadedGame } from "@/loaders/types";
@@ -18,22 +19,78 @@ interface HiddenObjectSceneProps {
   done: boolean;
 }
 
+interface BoundingBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function regionBoundingBox(region: Region): BoundingBox {
+  switch (region.shape) {
+    case "rect":
+      return region.rect;
+    case "circle": {
+      const { cx, cy, r } = region.circle;
+      return { x: cx - r, y: cy - r, w: r * 2, h: r * 2 };
+    }
+    case "polygon": {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const [px, py] of region.polygon.points) {
+        if (px < minX) minX = px;
+        if (py < minY) minY = py;
+        if (px > maxX) maxX = px;
+        if (py > maxY) maxY = py;
+      }
+      return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+    }
+  }
+}
+
+function regionClipPath(region: Region, bb: BoundingBox): string | undefined {
+  if (region.shape === "rect") return undefined;
+  if (region.shape === "circle") {
+    return "circle(50% at 50% 50%)";
+  }
+  const points = region.polygon.points
+    .map(([px, py]) => {
+      const lx = bb.w > 0 ? ((px - bb.x) / bb.w) * 100 : 0;
+      const ly = bb.h > 0 ? ((py - bb.y) / bb.h) * 100 : 0;
+      return `${lx}% ${ly}%`;
+    })
+    .join(", ");
+  return `polygon(${points})`;
+}
+
 function regionStyle(
   region: Region,
   imageW: number,
   imageH: number,
 ): CSSProperties {
-  return {
-    left: `${(region.rect.x / imageW) * 100}%`,
-    top: `${(region.rect.y / imageH) * 100}%`,
-    width: `${(region.rect.w / imageW) * 100}%`,
-    height: `${(region.rect.h / imageH) * 100}%`,
+  const bb = regionBoundingBox(region);
+  const clipPath = regionClipPath(region, bb);
+  const style: CSSProperties = {
+    left: `${(bb.x / imageW) * 100}%`,
+    top: `${(bb.y / imageH) * 100}%`,
+    width: `${(bb.w / imageW) * 100}%`,
+    height: `${(bb.h / imageH) * 100}%`,
   };
+  if (clipPath) style.clipPath = clipPath;
+  return style;
 }
 
-// Aspect-fit a logical image (imageW × imageH) inside a container, returning the
-// pixel dimensions of the displayed image. Both buttons and the Konva canvas
-// fill this size so percent-based positions land on the same pixels.
+const CONTROL_LABELS: Record<
+  Exclude<RegionKind, "target" | "reference">,
+  string
+> = {
+  hint: "Hint",
+  menu: "Menu",
+  pause: "Pause",
+};
+
 function fitDisplay(
   containerW: number,
   containerH: number,
@@ -60,6 +117,9 @@ export function HiddenObjectScene({
   const found = usePlayerStore(
     (s) => s.engineState?.hiddenObject[scene.id]?.foundObjectiveIds ?? EMPTY,
   );
+  const paused = usePlayerStore((s) => s.engineState?.paused ?? false);
+  const menuOpen = usePlayerStore((s) => s.engineState?.menuOpen ?? false);
+  const hintRequest = usePlayerStore((s) => s.engineState?.hintRequest ?? null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [display, setDisplay] = useState<{ width: number; height: number }>({
@@ -91,6 +151,19 @@ export function HiddenObjectScene({
     [scene.objectives, found],
   );
 
+  const controlRegions = useMemo(
+    () =>
+      scene.regions.filter(
+        (r) => r.kind === "hint" || r.kind === "menu" || r.kind === "pause",
+      ),
+    [scene.regions],
+  );
+
+  const activeHintObjectiveId =
+    hintRequest && hintRequest.sceneId === scene.id
+      ? hintRequest.objectiveId
+      : null;
+
   useEffect(() => {
     if (done) return;
     firstButtonRef.current?.focus();
@@ -100,6 +173,16 @@ export function HiddenObjectScene({
     (objective: Objective) => {
       if (done) return;
       dispatch({ type: "find", objectiveId: objective.id });
+    },
+    [dispatch, done],
+  );
+
+  const handleControl = useCallback(
+    (kind: RegionKind) => {
+      if (done) return;
+      if (kind === "hint") dispatch({ type: "hint" });
+      else if (kind === "menu") dispatch({ type: "menu" });
+      else if (kind === "pause") dispatch({ type: "pause" });
     },
     [dispatch, done],
   );
@@ -161,6 +244,7 @@ export function HiddenObjectScene({
               (r) => r.id === objective.targetRegionId,
             );
             if (!target) return null;
+            const isHinted = activeHintObjectiveId === objective.id;
             return (
               <button
                 key={objective.id}
@@ -169,6 +253,7 @@ export function HiddenObjectScene({
                 className="hog-target"
                 data-testid="hog-target"
                 data-objective-id={objective.id}
+                data-hint={isHinted ? "true" : "false"}
                 aria-label={objective.label}
                 style={regionStyle(target, imageW, imageH)}
                 onClick={() => handleFind(objective)}
@@ -176,8 +261,89 @@ export function HiddenObjectScene({
               />
             );
           })}
+          {activeObjectives.map((objective) => {
+            if (activeHintObjectiveId !== objective.id) return null;
+            const target = scene.regions.find(
+              (r) => r.id === objective.targetRegionId,
+            );
+            if (!target) return null;
+            const hintSeq = hintRequest?.seq ?? 0;
+            return (
+              <div
+                key={`pulse-${objective.id}-${hintSeq}`}
+                aria-hidden="true"
+                data-testid="hog-hint-pulse"
+                data-objective-id={objective.id}
+                data-hint-seq={hintSeq}
+                className="hog-hint-pulse"
+                style={regionStyle(target, imageW, imageH)}
+              />
+            );
+          })}
+          {controlRegions.map((region) => {
+            if (
+              region.kind !== "hint" &&
+              region.kind !== "menu" &&
+              region.kind !== "pause"
+            ) {
+              return null;
+            }
+            const label = CONTROL_LABELS[region.kind];
+            return (
+              <button
+                key={`ctrl-${region.id}`}
+                type="button"
+                className="hog-control"
+                data-testid="hog-control"
+                data-region-id={region.id}
+                data-control-kind={region.kind}
+                aria-label={label}
+                style={regionStyle(region, imageW, imageH)}
+                onClick={() => handleControl(region.kind)}
+                disabled={done}
+              />
+            );
+          })}
         </div>
       </div>
+      {paused ? (
+        <div
+          role="dialog"
+          aria-label="Paused"
+          aria-modal="true"
+          className="hog-overlay"
+          data-testid="hog-pause-overlay"
+        >
+          <div className="hog-overlay-card">
+            <h2>Paused</h2>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "pause", paused: false })}
+            >
+              Resume
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {menuOpen ? (
+        <div
+          role="dialog"
+          aria-label="Menu"
+          aria-modal="true"
+          className="hog-overlay"
+          data-testid="hog-menu-overlay"
+        >
+          <div className="hog-overlay-card">
+            <h2>Menu</h2>
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "menu", open: false })}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

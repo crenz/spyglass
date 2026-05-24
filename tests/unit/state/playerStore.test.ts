@@ -5,7 +5,7 @@ import { gameSchema } from "@/schema/game";
 
 const game = gameSchema.parse({
   id: "hello",
-  version: 3,
+  version: 4,
   title: "Hello",
   startScene: "title",
   scenes: [

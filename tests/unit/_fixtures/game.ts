@@ -26,7 +26,7 @@ export const introScene: SplashScene = splashSceneSchema.parse({
 
 export const helloGame: Game = gameSchema.parse({
   id: "hello",
-  version: 3,
+  version: 4,
   title: "Hello",
   startScene: "title",
   scenes: [titleScene, introScene],

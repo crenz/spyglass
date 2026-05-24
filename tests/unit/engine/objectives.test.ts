@@ -16,12 +16,42 @@ function makeScene(): HiddenObjectScene {
     title: "Library",
     image: { src: "images/scene-1.png", width: 1024, height: 768 },
     regions: [
-      { id: "t_key", shape: "rect", rect: { x: 10, y: 10, w: 20, h: 20 } },
-      { id: "r_key", shape: "rect", rect: { x: 100, y: 600, w: 80, h: 80 } },
-      { id: "t_book", shape: "rect", rect: { x: 50, y: 50, w: 30, h: 30 } },
-      { id: "r_book", shape: "rect", rect: { x: 200, y: 600, w: 80, h: 80 } },
-      { id: "t_cup", shape: "rect", rect: { x: 80, y: 80, w: 25, h: 25 } },
-      { id: "r_cup", shape: "rect", rect: { x: 300, y: 600, w: 80, h: 80 } },
+      {
+        id: "t_key",
+        kind: "target",
+        shape: "rect",
+        rect: { x: 10, y: 10, w: 20, h: 20 },
+      },
+      {
+        id: "r_key",
+        kind: "reference",
+        shape: "rect",
+        rect: { x: 100, y: 600, w: 80, h: 80 },
+      },
+      {
+        id: "t_book",
+        kind: "target",
+        shape: "rect",
+        rect: { x: 50, y: 50, w: 30, h: 30 },
+      },
+      {
+        id: "r_book",
+        kind: "reference",
+        shape: "rect",
+        rect: { x: 200, y: 600, w: 80, h: 80 },
+      },
+      {
+        id: "t_cup",
+        kind: "target",
+        shape: "rect",
+        rect: { x: 80, y: 80, w: 25, h: 25 },
+      },
+      {
+        id: "r_cup",
+        kind: "reference",
+        shape: "rect",
+        rect: { x: 300, y: 600, w: 80, h: 80 },
+      },
     ],
     objectives: [
       {

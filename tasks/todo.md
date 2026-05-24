@@ -28,7 +28,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done · `⛳` human-review c
 - [x] **S2 · cutscene-with-captions** — schema v2 cutscene, engine cutscene scene, `<video>` player with captions + skip + muted-first-play, e2e watch-through + skip.
 - [x] **S3 · hidden-object-basic** — schema v3 rect regions + objectives, `objectives.ts` + tests, react-konva Targets/References + A11y parallel DOM, pointer/touch/keyboard unification, e2e find-all + auto-advance.
   - Deferred: tabbing through HOG targets visibly reveals every hotspot via `:focus-visible` outlines, which gives the location away. Need a sighted-vs-AT visibility split (e.g. hide outlines unless explicitly focused via keyboard, or only show on the active "next target" hint). Revisit alongside S5's hint UX.
-- [ ] **S4 · hotspot-shapes-and-controls** — schema v4 polygon + circle + control region kinds (`hint`/`menu`/`pause`), geometry helpers, control bindings, e2e for each shape.
+- [x] **S4 · hotspot-shapes-and-controls** — schema v4 polygon + circle + control region kinds (`hint`/`menu`/`pause`), geometry helpers, control bindings, e2e for each shape.
 
 ⛳ **Checkpoint A→B** — spec §1 #2 holds for splash → cutscene → HOG → splash; mouse/touch/keyboard parity confirmed.
 

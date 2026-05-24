@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   gameSchema,
   splashSceneSchema,
@@ -10,7 +12,7 @@ import { migrate, SchemaMigrationError } from "@/schema/migrate";
 
 const validGame = {
   id: "hello",
-  version: 3,
+  version: 4,
   title: "Hello",
   startScene: "title",
   scenes: [
@@ -37,10 +39,30 @@ const validGame = {
       title: "The library",
       image: { src: "images/scene-1.png", width: 1024, height: 768 },
       regions: [
-        { id: "t_key", shape: "rect", rect: { x: 100, y: 100, w: 40, h: 40 } },
-        { id: "r_key", shape: "rect", rect: { x: 50, y: 600, w: 80, h: 80 } },
-        { id: "t_book", shape: "rect", rect: { x: 300, y: 200, w: 60, h: 60 } },
-        { id: "r_book", shape: "rect", rect: { x: 150, y: 600, w: 80, h: 80 } },
+        {
+          id: "t_key",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 100, y: 100, w: 40, h: 40 },
+        },
+        {
+          id: "r_key",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 50, y: 600, w: 80, h: 80 },
+        },
+        {
+          id: "t_book",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 300, y: 200, w: 60, h: 60 },
+        },
+        {
+          id: "r_book",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 150, y: 600, w: 80, h: 80 },
+        },
       ],
       objectives: [
         {
@@ -88,7 +110,7 @@ describe("gameSchema", () => {
   });
 
   it("rejects a wrong version", () => {
-    const game = { ...validGame, version: 4 };
+    const game = { ...validGame, version: 5 };
     expect(() => gameSchema.parse(game)).toThrow();
   });
 
@@ -188,7 +210,21 @@ describe("gameSchema", () => {
   });
 
   it("exports the current schema version", () => {
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
+  });
+
+  it("validates the bundled hello fixture", () => {
+    const path = resolve(process.cwd(), "public/games/hello/manifest.json");
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    const game = gameSchema.parse(raw);
+    expect(game.id).toBe("hello");
+    const hog = game.scenes.find((s) => s.kind === "hidden_object");
+    if (hog?.kind !== "hidden_object") throw new Error("no HOG scene");
+    const shapes = new Set(hog.regions.map((r) => r.shape));
+    expect(shapes.has("rect")).toBe(true);
+    expect(shapes.has("polygon")).toBe(true);
+    expect(shapes.has("circle")).toBe(true);
+    expect(hog.regions.some((r) => r.kind === "hint")).toBe(true);
   });
 });
 
@@ -198,8 +234,18 @@ describe("hiddenObjectSceneSchema", () => {
     kind: "hidden_object",
     image: { src: "images/scene-1.png", width: 1024, height: 768 },
     regions: [
-      { id: "t1", shape: "rect", rect: { x: 10, y: 20, w: 30, h: 40 } },
-      { id: "r1", shape: "rect", rect: { x: 50, y: 60, w: 70, h: 80 } },
+      {
+        id: "t1",
+        kind: "target",
+        shape: "rect",
+        rect: { x: 10, y: 20, w: 30, h: 40 },
+      },
+      {
+        id: "r1",
+        kind: "reference",
+        shape: "rect",
+        rect: { x: 50, y: 60, w: 70, h: 80 },
+      },
     ],
     objectives: [
       {
@@ -238,8 +284,18 @@ describe("hiddenObjectSceneSchema", () => {
     const parsed = hiddenObjectSceneSchema.safeParse({
       ...validHog,
       regions: [
-        { id: "x", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
-        { id: "x", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+        {
+          id: "x",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 0, y: 0, w: 10, h: 10 },
+        },
+        {
+          id: "x",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 20, y: 0, w: 10, h: 10 },
+        },
       ],
       objectives: [
         {
@@ -264,8 +320,18 @@ describe("hiddenObjectSceneSchema", () => {
     const parsed = hiddenObjectSceneSchema.safeParse({
       ...validHog,
       regions: [
-        { id: "t", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
-        { id: "r", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+        {
+          id: "t",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 0, y: 0, w: 10, h: 10 },
+        },
+        {
+          id: "r",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 20, y: 0, w: 10, h: 10 },
+        },
       ],
       objectives: [
         { id: "o", label: "A", targetRegionId: "t", referenceRegionId: "r" },
@@ -342,8 +408,18 @@ describe("hiddenObjectSceneSchema", () => {
     const parsed = hiddenObjectSceneSchema.safeParse({
       ...validHog,
       regions: [
-        { id: "t1", shape: "rect", rect: { x: 0, y: 0, w: 0, h: 10 } },
-        { id: "r1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
+        {
+          id: "t1",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 0, y: 0, w: 0, h: 10 },
+        },
+        {
+          id: "r1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 0, y: 0, w: 10, h: 10 },
+        },
       ],
     });
     expect(parsed.success).toBe(false);
@@ -353,11 +429,232 @@ describe("hiddenObjectSceneSchema", () => {
     const parsed = hiddenObjectSceneSchema.safeParse({
       ...validHog,
       regions: [
-        { id: "t1", shape: "rect", rect: { x: -1, y: 0, w: 10, h: 10 } },
-        { id: "r1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
+        {
+          id: "t1",
+          kind: "target",
+          shape: "rect",
+          rect: { x: -1, y: 0, w: 10, h: 10 },
+        },
+        {
+          id: "r1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 0, y: 0, w: 10, h: 10 },
+        },
       ],
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("accepts a polygon region with at least three points", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        {
+          id: "t1",
+          kind: "target",
+          shape: "polygon",
+          polygon: {
+            points: [
+              [0, 0],
+              [10, 0],
+              [10, 10],
+            ],
+          },
+        },
+        {
+          id: "r1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 50, y: 0, w: 10, h: 10 },
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects a polygon with fewer than three points", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        {
+          id: "t1",
+          kind: "target",
+          shape: "polygon",
+          polygon: {
+            points: [
+              [0, 0],
+              [10, 0],
+            ],
+          },
+        },
+        {
+          id: "r1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 50, y: 0, w: 10, h: 10 },
+        },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts a circle region with positive radius", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        {
+          id: "t1",
+          kind: "target",
+          shape: "circle",
+          circle: { cx: 50, cy: 50, r: 25 },
+        },
+        {
+          id: "r1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 100, y: 100, w: 10, h: 10 },
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects a circle with non-positive radius", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        {
+          id: "t1",
+          kind: "target",
+          shape: "circle",
+          circle: { cx: 50, cy: 50, r: 0 },
+        },
+        {
+          id: "r1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 100, y: 100, w: 10, h: 10 },
+        },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts hint/menu/pause control regions", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        ...validHog.regions,
+        {
+          id: "hint_btn",
+          kind: "hint",
+          shape: "rect",
+          rect: { x: 900, y: 700, w: 60, h: 60 },
+        },
+        {
+          id: "menu_btn",
+          kind: "menu",
+          shape: "rect",
+          rect: { x: 960, y: 700, w: 60, h: 60 },
+        },
+        {
+          id: "pause_btn",
+          kind: "pause",
+          shape: "rect",
+          rect: { x: 840, y: 700, w: 60, h: 60 },
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects an unknown region kind", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        {
+          id: "weird",
+          kind: "decoration",
+          shape: "rect",
+          rect: { x: 0, y: 0, w: 10, h: 10 },
+        },
+        ...validHog.regions,
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an objective whose targetRegionId points to a non-target kind", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        {
+          id: "t1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 10, y: 20, w: 30, h: 40 },
+        },
+        {
+          id: "r1",
+          kind: "reference",
+          shape: "rect",
+          rect: { x: 50, y: 60, w: 70, h: 80 },
+        },
+      ],
+      objectives: [
+        {
+          id: "obj1",
+          label: "Find me",
+          targetRegionId: "t1",
+          referenceRegionId: "r1",
+        },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(
+        parsed.error.issues.some((i) =>
+          i.message.toLowerCase().includes("target"),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects an objective whose referenceRegionId points to a non-reference kind", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        {
+          id: "t1",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 10, y: 20, w: 30, h: 40 },
+        },
+        {
+          id: "r1",
+          kind: "target",
+          shape: "rect",
+          rect: { x: 50, y: 60, w: 70, h: 80 },
+        },
+      ],
+      objectives: [
+        {
+          id: "obj1",
+          label: "Find me",
+          targetRegionId: "t1",
+          referenceRegionId: "r1",
+        },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(
+        parsed.error.issues.some((i) =>
+          i.message.toLowerCase().includes("reference"),
+        ),
+      ).toBe(true);
+    }
   });
 
   it("rejects an HOG onComplete pointing to an unknown scene at game level", () => {
@@ -481,6 +778,33 @@ describe("migrate", () => {
     ],
   };
 
+  const legacyV3Game = {
+    id: "hello",
+    version: 3,
+    title: "Hello",
+    startScene: "scene_1",
+    scenes: [
+      {
+        id: "scene_1",
+        kind: "hidden_object",
+        image: { src: "images/scene-1.png", width: 1024, height: 768 },
+        regions: [
+          { id: "t1", shape: "rect", rect: { x: 10, y: 20, w: 30, h: 40 } },
+          { id: "r1", shape: "rect", rect: { x: 50, y: 60, w: 70, h: 80 } },
+        ],
+        objectives: [
+          {
+            id: "obj1",
+            label: "Find me",
+            targetRegionId: "t1",
+            referenceRegionId: "r1",
+          },
+        ],
+        onComplete: { gotoSceneId: null },
+      },
+    ],
+  };
+
   it("passes through a current-version game", () => {
     const parsed = migrate(validGame);
     expect(parsed.id).toBe("hello");
@@ -499,7 +823,20 @@ describe("migrate", () => {
     expect(migrated.scenes[0]?.kind).toBe("splash");
   });
 
-  it("preserves scene content across v1 → v3 migration", () => {
+  it("migrates a v3 game and infers region kinds from objectives", () => {
+    const migrated = migrate(legacyV3Game);
+    expect(migrated.version).toBe(SCHEMA_VERSION);
+    const hog = migrated.scenes[0];
+    if (hog?.kind !== "hidden_object") {
+      throw new Error("expected hidden_object scene");
+    }
+    const t1 = hog.regions.find((r) => r.id === "t1");
+    const r1 = hog.regions.find((r) => r.id === "r1");
+    expect(t1?.kind).toBe("target");
+    expect(r1?.kind).toBe("reference");
+  });
+
+  it("preserves scene content across v1 → current migration", () => {
     const migrated = migrate(legacyV1Game);
     expect(migrated.scenes).toHaveLength(1);
     expect(migrated.scenes[0]?.id).toBe("title");

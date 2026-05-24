@@ -7,8 +7,18 @@ const sceneWithGoto = hiddenObjectSceneSchema.parse({
   kind: "hidden_object",
   image: { src: "images/scene-1.png", width: 1024, height: 768 },
   regions: [
-    { id: "t1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
-    { id: "r1", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+    {
+      id: "t1",
+      kind: "target",
+      shape: "rect",
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+    },
+    {
+      id: "r1",
+      kind: "reference",
+      shape: "rect",
+      rect: { x: 20, y: 0, w: 10, h: 10 },
+    },
   ],
   objectives: [
     { id: "o1", label: "L", targetRegionId: "t1", referenceRegionId: "r1" },
@@ -21,8 +31,18 @@ const sceneWithNull = hiddenObjectSceneSchema.parse({
   kind: "hidden_object",
   image: { src: "images/scene-1.png", width: 1024, height: 768 },
   regions: [
-    { id: "t1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
-    { id: "r1", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+    {
+      id: "t1",
+      kind: "target",
+      shape: "rect",
+      rect: { x: 0, y: 0, w: 10, h: 10 },
+    },
+    {
+      id: "r1",
+      kind: "reference",
+      shape: "rect",
+      rect: { x: 20, y: 0, w: 10, h: 10 },
+    },
   ],
   objectives: [
     { id: "o1", label: "L", targetRegionId: "t1", referenceRegionId: "r1" },

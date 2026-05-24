@@ -9,6 +9,7 @@ export function A11yLayer() {
     let previousSceneId: string | null = null;
     let previousDone = false;
     let previousFound: readonly string[] = [];
+    let previousHintSeq = 0;
 
     const unsubscribe = usePlayerStore.subscribe((state) => {
       if (!state.loaded || !state.engineState) return;
@@ -16,11 +17,27 @@ export function A11yLayer() {
       const scene = currentScene(state.loaded.game, state.engineState);
       const done = state.engineState.done;
       const sceneChanged = sceneId !== previousSceneId;
+      const hintReq = state.engineState.hintRequest;
+      const hintSeq = hintReq?.seq ?? 0;
 
       if (done && !previousDone) {
         setMessage(`Game over. Final scene: ${scene.title ?? scene.id}.`);
       } else if (sceneChanged) {
         setMessage(`Now showing: ${scene.title ?? scene.id}.`);
+      } else if (
+        hintReq &&
+        hintSeq > previousHintSeq &&
+        scene.kind === "hidden_object" &&
+        hintReq.sceneId === scene.id
+      ) {
+        const objective = scene.objectives.find(
+          (o) => o.id === hintReq.objectiveId,
+        );
+        if (objective) {
+          // Pad with zero-width spaces so repeated hint requests produce a
+          // distinct DOM text node — required to retrigger aria-live.
+          setMessage(`Hint: ${objective.label}.${"​".repeat(hintSeq)}`);
+        }
       } else if (scene.kind === "hidden_object") {
         const found =
           state.engineState.hiddenObject[scene.id]?.foundObjectiveIds ?? [];
@@ -43,6 +60,7 @@ export function A11yLayer() {
       }
       previousSceneId = sceneId;
       previousDone = done;
+      previousHintSeq = hintSeq;
     });
 
     const state = usePlayerStore.getState();
@@ -54,6 +72,7 @@ export function A11yLayer() {
         scene.kind === "hidden_object"
           ? (state.engineState.hiddenObject[scene.id]?.foundObjectiveIds ?? [])
           : [];
+      previousHintSeq = state.engineState.hintRequest?.seq ?? 0;
       setMessage(`Now showing: ${scene.title ?? scene.id}.`);
     }
 
