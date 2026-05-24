@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const sceneIdSchema = z
   .string()
@@ -41,7 +41,49 @@ export const splashSceneSchema = z.object({
   }),
 });
 
-export const sceneSchema = z.discriminatedUnion("kind", [splashSceneSchema]);
+const cutsceneSkipPolicySchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("always") }),
+  z.object({
+    kind: z.literal("after-ms"),
+    afterMs: z.number().int().positive().max(600_000),
+  }),
+]);
+
+export const cutsceneSceneSchema = z.object({
+  id: sceneIdSchema,
+  kind: z.literal("cutscene"),
+  title: z.string().min(1).optional(),
+  video: assetPathSchema,
+  captions: assetPathSchema.optional(),
+  skipPolicy: cutsceneSkipPolicySchema,
+  onEnd: z.object({
+    gotoSceneId: sceneIdSchema.nullable(),
+  }),
+});
+
+export const sceneSchema = z.discriminatedUnion("kind", [
+  splashSceneSchema,
+  cutsceneSceneSchema,
+]);
+
+function sceneTransitionTargets(scene: z.infer<typeof sceneSchema>): {
+  path: (string | number)[];
+  target: string | null;
+}[] {
+  switch (scene.kind) {
+    case "splash":
+      return [
+        {
+          path: ["onAdvance", "gotoSceneId"],
+          target: scene.onAdvance.gotoSceneId,
+        },
+      ];
+    case "cutscene":
+      return [
+        { path: ["onEnd", "gotoSceneId"], target: scene.onEnd.gotoSceneId },
+      ];
+  }
+}
 
 export const gameSchema = z
   .object({
@@ -71,18 +113,21 @@ export const gameSchema = z
       });
     }
     for (const scene of game.scenes) {
-      const target = scene.onAdvance.gotoSceneId;
-      if (target !== null && !ids.has(target)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Scene "${scene.id}" advances to unknown scene "${target}".`,
-          path: ["scenes"],
-        });
+      for (const { target } of sceneTransitionTargets(scene)) {
+        if (target !== null && !ids.has(target)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Scene "${scene.id}" advances to unknown scene "${target}".`,
+            path: ["scenes"],
+          });
+        }
       }
     }
   });
 
 export type SplashAdvance = z.infer<typeof splashAdvanceSchema>;
 export type SplashScene = z.infer<typeof splashSceneSchema>;
+export type CutsceneSkipPolicy = z.infer<typeof cutsceneSkipPolicySchema>;
+export type CutsceneScene = z.infer<typeof cutsceneSceneSchema>;
 export type Scene = z.infer<typeof sceneSchema>;
 export type Game = z.infer<typeof gameSchema>;

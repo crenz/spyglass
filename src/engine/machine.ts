@@ -1,5 +1,6 @@
 import type { Game, Scene } from "@/schema/game";
 import { resolveSplashAdvance } from "./scenes/splash";
+import { resolveCutsceneEnd } from "./scenes/cutscene";
 
 export interface EngineState {
   readonly currentSceneId: string;
@@ -64,6 +65,9 @@ function advance(game: Game, state: EngineState): EngineState {
   switch (scene.kind) {
     case "splash":
       nextSceneId = resolveSplashAdvance(scene);
+      break;
+    case "cutscene":
+      nextSceneId = resolveCutsceneEnd(scene);
       break;
   }
   return goto(game, state, nextSceneId);

@@ -4,7 +4,7 @@ import { gameSchema, type Game } from "@/schema/game";
 
 const game: Game = gameSchema.parse({
   id: "hello",
-  version: 1,
+  version: 2,
   title: "Hello",
   startScene: "title",
   scenes: [
@@ -14,7 +14,15 @@ const game: Game = gameSchema.parse({
       title: "Title",
       image: "images/title.png",
       advance: { kind: "click" },
-      onAdvance: { gotoSceneId: "intro" },
+      onAdvance: { gotoSceneId: "intro_video" },
+    },
+    {
+      id: "intro_video",
+      kind: "cutscene",
+      title: "Intro",
+      video: "videos/intro.mp4",
+      skipPolicy: { kind: "always" },
+      onEnd: { gotoSceneId: "intro" },
     },
     {
       id: "intro",
@@ -53,21 +61,31 @@ describe("engine.dispatch", () => {
   it("advances a splash scene to its onAdvance target", () => {
     const state1 = init(game);
     const state2 = dispatch(game, state1, { type: "advance" });
-    expect(state2.currentSceneId).toBe("intro");
+    expect(state2.currentSceneId).toBe("intro_video");
     expect(state2.history).toEqual(["title"]);
+  });
+
+  it("advances a cutscene to its onEnd target", () => {
+    let state = init(game);
+    state = dispatch(game, state, { type: "advance" });
+    expect(state.currentSceneId).toBe("intro_video");
+    state = dispatch(game, state, { type: "advance" });
+    expect(state.currentSceneId).toBe("intro");
   });
 
   it("walks multiple scenes", () => {
     let state = init(game);
     state = dispatch(game, state, { type: "advance" });
+    state = dispatch(game, state, { type: "advance" });
     expect(state.currentSceneId).toBe("intro");
     state = dispatch(game, state, { type: "advance" });
     expect(state.currentSceneId).toBe("end");
-    expect(state.history).toEqual(["title", "intro"]);
+    expect(state.history).toEqual(["title", "intro_video", "intro"]);
   });
 
   it("marks the game done when advancing into a null target", () => {
     let state = init(game);
+    state = dispatch(game, state, { type: "advance" });
     state = dispatch(game, state, { type: "advance" });
     state = dispatch(game, state, { type: "advance" });
     state = dispatch(game, state, { type: "advance" });
@@ -77,6 +95,7 @@ describe("engine.dispatch", () => {
 
   it("is a no-op after done", () => {
     let state = init(game);
+    state = dispatch(game, state, { type: "advance" });
     state = dispatch(game, state, { type: "advance" });
     state = dispatch(game, state, { type: "advance" });
     state = dispatch(game, state, { type: "advance" });

@@ -10,26 +10,47 @@ export class SchemaMigrationError extends Error {
   }
 }
 
+type RawGame = Record<string, unknown>;
+
+const MIGRATIONS: Record<number, (raw: RawGame) => RawGame> = {
+  // v1 → v2: additive (cutscene scenes are new but optional). Bump the version.
+  1: (raw) => ({ ...raw, version: 2 }),
+};
+
 /**
  * Forward-migrates a raw game object to the current SCHEMA_VERSION, then validates it.
- * v1 is the initial version — there are no migrations yet, only a passthrough.
+ * Each step in the version chain is handled by a small additive migrator.
  */
 export function migrate(raw: unknown): Game {
   if (typeof raw !== "object" || raw === null) {
     throw new SchemaMigrationError("Game must be a JSON object.", typeof raw);
   }
-  const version = (raw as { version?: unknown }).version;
-  if (version === undefined) {
+  let current = { ...(raw as RawGame) };
+  const startVersion = current.version;
+  if (startVersion === undefined) {
     throw new SchemaMigrationError(
       'Game is missing a "version" field.',
-      version,
+      startVersion,
     );
   }
-  if (version !== SCHEMA_VERSION) {
+  if (typeof startVersion !== "number") {
     throw new SchemaMigrationError(
-      `Unknown schema version ${String(version)}. Current is ${SCHEMA_VERSION}.`,
-      version,
+      `Unknown schema version ${String(startVersion)}. Current is ${SCHEMA_VERSION}.`,
+      startVersion,
     );
   }
-  return gameSchema.parse(raw);
+
+  while (current.version !== SCHEMA_VERSION) {
+    const v = current.version as number;
+    const step = MIGRATIONS[v];
+    if (!step) {
+      throw new SchemaMigrationError(
+        `Unknown schema version ${String(v)}. Current is ${SCHEMA_VERSION}.`,
+        v,
+      );
+    }
+    current = step(current);
+  }
+
+  return gameSchema.parse(current);
 }

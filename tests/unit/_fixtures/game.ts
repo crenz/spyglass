@@ -1,29 +1,35 @@
-import { gameSchema, type Game } from "@/schema/game";
+import {
+  gameSchema,
+  splashSceneSchema,
+  type Game,
+  type SplashScene,
+} from "@/schema/game";
 import type { LoadedGame } from "@/loaders/types";
+
+export const titleScene: SplashScene = splashSceneSchema.parse({
+  id: "title",
+  kind: "splash",
+  title: "Title",
+  image: "images/title.png",
+  advance: { kind: "click" },
+  onAdvance: { gotoSceneId: "intro" },
+});
+
+export const introScene: SplashScene = splashSceneSchema.parse({
+  id: "intro",
+  kind: "splash",
+  title: "Intro",
+  image: "images/intro.png",
+  advance: { kind: "key" },
+  onAdvance: { gotoSceneId: null },
+});
 
 export const helloGame: Game = gameSchema.parse({
   id: "hello",
-  version: 1,
+  version: 2,
   title: "Hello",
   startScene: "title",
-  scenes: [
-    {
-      id: "title",
-      kind: "splash",
-      title: "Title",
-      image: "images/title.png",
-      advance: { kind: "click" },
-      onAdvance: { gotoSceneId: "intro" },
-    },
-    {
-      id: "intro",
-      kind: "splash",
-      title: "Intro",
-      image: "images/intro.png",
-      advance: { kind: "key" },
-      onAdvance: { gotoSceneId: null },
-    },
-  ],
+  scenes: [titleScene, introScene],
 });
 
 export function makeLoadedGame(game: Game = helloGame): LoadedGame {

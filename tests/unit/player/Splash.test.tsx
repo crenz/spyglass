@@ -5,7 +5,7 @@ import { axe } from "jest-axe";
 import { Splash } from "@/player/Splash/Splash";
 import { usePlayerStore } from "@/state/playerStore";
 import { init } from "@/engine/machine";
-import { helloGame, makeLoadedGame } from "../_fixtures/game";
+import { introScene, titleScene, makeLoadedGame } from "../_fixtures/game";
 
 function setupStore() {
   const loaded = makeLoadedGame();
@@ -25,9 +25,7 @@ describe("<Splash />", () => {
 
   it("renders the image with the scene title as alt text", () => {
     const loaded = makeLoadedGame();
-    render(
-      <Splash scene={helloGame.scenes[0]!} loaded={loaded} done={false} />,
-    );
+    render(<Splash scene={titleScene} loaded={loaded} done={false} />);
     const img = screen.getByRole("img", { name: "Title" });
     expect(img).toHaveAttribute("src", "./games/hello/images/title.png");
   });
@@ -35,9 +33,7 @@ describe("<Splash />", () => {
   it("advances on click in click-mode", async () => {
     const user = userEvent.setup();
     const loaded = setupStore();
-    render(
-      <Splash scene={helloGame.scenes[0]!} loaded={loaded} done={false} />,
-    );
+    render(<Splash scene={titleScene} loaded={loaded} done={false} />);
     await user.click(screen.getByRole("button"));
     expect(usePlayerStore.getState().engineState?.currentSceneId).toBe("intro");
   });
@@ -45,9 +41,7 @@ describe("<Splash />", () => {
   it("advances on Enter in click-mode (button native activation)", async () => {
     const user = userEvent.setup();
     const loaded = setupStore();
-    render(
-      <Splash scene={helloGame.scenes[0]!} loaded={loaded} done={false} />,
-    );
+    render(<Splash scene={titleScene} loaded={loaded} done={false} />);
     await user.keyboard("{Enter}");
     expect(usePlayerStore.getState().engineState?.currentSceneId).toBe("intro");
   });
@@ -59,9 +53,7 @@ describe("<Splash />", () => {
     act(() => {
       usePlayerStore.getState().dispatch({ type: "advance" });
     });
-    render(
-      <Splash scene={helloGame.scenes[1]!} loaded={loaded} done={false} />,
-    );
+    render(<Splash scene={introScene} loaded={loaded} done={false} />);
     await user.keyboard("x");
     expect(usePlayerStore.getState().engineState?.done).toBe(true);
   });
@@ -73,9 +65,7 @@ describe("<Splash />", () => {
       usePlayerStore.getState().dispatch({ type: "advance" });
     });
     const before = usePlayerStore.getState().engineState;
-    render(
-      <Splash scene={helloGame.scenes[1]!} loaded={loaded} done={false} />,
-    );
+    render(<Splash scene={introScene} loaded={loaded} done={false} />);
     await user.keyboard("{Shift}{Control}");
     expect(usePlayerStore.getState().engineState).toBe(before);
   });
@@ -110,7 +100,7 @@ describe("<Splash />", () => {
   it("has no accessibility violations", async () => {
     const loaded = makeLoadedGame();
     const { container } = render(
-      <Splash scene={helloGame.scenes[0]!} loaded={loaded} done={false} />,
+      <Splash scene={titleScene} loaded={loaded} done={false} />,
     );
     const results = await axe(container);
     expect(results).toHaveNoViolations();
@@ -118,7 +108,7 @@ describe("<Splash />", () => {
 
   it("disables the button and hides the hint when done", () => {
     const loaded = makeLoadedGame();
-    render(<Splash scene={helloGame.scenes[1]!} loaded={loaded} done={true} />);
+    render(<Splash scene={introScene} loaded={loaded} done={true} />);
     expect(screen.getByRole("button")).toBeDisabled();
     expect(screen.queryByText(/press any key/i)).not.toBeInTheDocument();
   });
