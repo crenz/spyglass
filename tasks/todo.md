@@ -9,18 +9,19 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done · `⛳` human-review c
 
 ## Phase A — Foundation
 
-- [ ] **S1 · foundation-and-splash** — Vite+React+TS scaffold, schema v1 (splash only), engine state machine, bundled loader, PlayerView + Splash + A11yLayer, Zustand store, CI workflow. Acceptance: `npm run dev` shows splash, click/Enter advances, all CI gates green, jest-axe clean, builds run via `file://`.
-  - [ ] Vite + TS + ESLint + Prettier + `@/` alias + `base: './'`
-  - [ ] Vitest + RTL + jest-axe configured
-  - [ ] Playwright configured (Chromium project + one smoke spec)
-  - [ ] Zod schema v1 (splash only) + identity `migrate()`
-  - [ ] Engine `machine.ts` + `scenes/splash.ts` + unit tests
-  - [ ] `loaders/bundled.ts` + fixture `public/games/hello/` (two splashes)
-  - [ ] `playerStore.ts` (Zustand)
-  - [ ] `PlayerView` + `Splash` + `A11yLayer` (`aria-live`)
-  - [ ] Engine-purity ESLint rule banning React/Konva/DOM imports in `src/engine/`
-  - [ ] `.github/workflows/ci.yml` (typecheck/lint/test/test:e2e/build)
-  - [ ] Manual verify in `npm run dev`, `npm run preview`, and `file://`
+- [x] **S1 · foundation-and-splash** — Vite+React+TS scaffold, schema v1 (splash only), engine state machine, bundled loader, PlayerView + Splash + A11yLayer, Zustand store, CI workflow. Acceptance: `npm run dev` shows splash, click/Enter advances, all CI gates green, jest-axe clean, builds run via `file://`.
+  - [x] Vite + TS + ESLint + Prettier + `@/` alias + `base: './'`
+  - [x] Vitest + RTL + jest-axe configured
+  - [x] Playwright configured (Chromium project + one smoke spec)
+  - [x] Zod schema v1 (splash only) + identity `migrate()`
+  - [x] Engine `machine.ts` + `scenes/splash.ts` + unit tests
+  - [x] `loaders/bundled.ts` + fixture `public/games/hello/` (two splashes)
+  - [x] `playerStore.ts` (Zustand)
+  - [x] `PlayerView` + `Splash` + `A11yLayer` (`aria-live`)
+  - [x] Engine-purity ESLint rule banning React/Konva/DOM imports in `src/engine/`
+  - [x] `.github/workflows/ci.yml` (typecheck/lint/format:check/test/test:e2e/build)
+  - [x] `fetchSafe` + e2e `file://` test (XHR fallback for Chromium's file:// fetch block)
+  - [x] dev/preview/`file://` smoke-verified
 
 ## Phase B — Scene kinds
 

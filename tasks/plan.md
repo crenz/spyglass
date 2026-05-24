@@ -69,6 +69,7 @@ A solo author should walk the slices in numerical order. A multi-agent fan-out c
 **Goal.** Run `npm run dev` and see a splash screen from a bundled game; click or press Enter to advance to a second splash. Same flow works keyboard-only. CI is green on a fresh clone.
 
 **Scope.**
+
 - Vite + React + TypeScript scaffold. `strict: true`. `@/` alias. `base: './'`. Prettier + ESLint with `@typescript-eslint/recommended` and `react-hooks/recommended`. `.editorconfig`.
 - Vitest + React Testing Library + `jest-axe` configured. Playwright configured with one Chromium project.
 - `src/schema/game.ts` — Zod v1 schema with only the `splash` scene kind: `Game { id, version: 1, title, startScene, scenes: Scene[] }`, `Scene = SplashScene { id, kind: 'splash', image, advance: { kind: 'click' | 'key' | 'timeout', timeoutMs? }, onAdvance: { gotoSceneId } }`. Derive TS types via `z.infer`. `migrate.ts` exports an identity `migrate(game)` function as a stub.
@@ -86,6 +87,7 @@ A solo author should walk the slices in numerical order. A multi-agent fan-out c
 - `.github/workflows/ci.yml` — typecheck, lint, test, test:e2e, build. All required.
 
 **Acceptance criteria.**
+
 - `npm install && npm run dev` opens the app and shows splash 1.
 - Click anywhere on splash 1 → splash 2. Press Enter on splash 1 (focused) → splash 2.
 - Screen reader announces "Splash: <title>" on each transition (verified via test, not manual).
@@ -95,12 +97,14 @@ A solo author should walk the slices in numerical order. A multi-agent fan-out c
 - The built `dist/` opens in a browser via `file://` and shows the same splash flow (manual check).
 
 **Verification steps.**
+
 1. `npm ci && npm run test && npm run test:e2e && npm run build` → all green.
 2. `npm run dev` → manual click + keyboard walk-through.
 3. `npx http-server dist -p 8080` → walk-through at `http://localhost:8080/`.
 4. `open dist/index.html` (macOS) → walk-through via `file://`.
 
 **Risks.**
+
 - Konva is not introduced yet — splash uses a plain `<img>` inside an `<a>`/`<button>`. Don't pull in Konva until S3.
 - The schema lock-in: stay minimal. Pairing, regions, audio, branching, flags — none of it exists yet. Add it when its slice arrives.
 
@@ -113,6 +117,7 @@ A solo author should walk the slices in numerical order. A multi-agent fan-out c
 **Goal.** Add a cutscene scene kind. `hello` game becomes splash → cutscene → splash. Skip button works. Captions render when a WebVTT track is supplied. First load never autoplays with audible sound.
 
 **Scope.**
+
 - Schema v2: add `CutsceneScene { id, kind: 'cutscene', video, captions?, skipPolicy: 'always' | 'after-ms', onEnd: { gotoSceneId } }`. Bump schema version; add `migrate v1 → v2` (additive, returns game unchanged with `version: 2`).
 - `src/engine/scenes/cutscene.ts` — transitions on `videoEnded` and on `skip`.
 - `src/player/Cutscene/Cutscene.tsx` — `<video>` with `muted` on first play (until user interacts), `<track kind="captions">` when WebVTT provided, keyboard-reachable Skip button, `aria-live` announcement on start/end.
@@ -133,6 +138,7 @@ A solo author should walk the slices in numerical order. A multi-agent fan-out c
 **Goal.** Add a hidden-object scene. Rectangle hotspots only. Author-marked target regions are clickable; finding a target updates its paired reference in the baked-in HUD strip (grayed out). `hello` becomes splash → cutscene → HOG → splash.
 
 **Scope.**
+
 - Schema v3: add `Region = { id, shape: 'rect', rect: {x,y,w,h} }` (polygon/circle reserved for S4). Add `HiddenObjectScene { id, kind: 'hidden_object', image, regions: Region[], objectives: Objective[], onComplete: { gotoSceneId } }`. `Objective = { id, label, targetRegionId, referenceRegionId }`. Pairings reference region IDs, not coordinates. Migrate v2 → v3 (additive).
 - `src/engine/objectives.ts` — pure: `findObjective(state, regionId) → state | null` (returns null if region isn't an active target). `isSceneComplete(state)`. Tests cover both halves of every pairing.
 - `src/engine/scenes/hidden_object.ts` — transition on complete.
@@ -158,6 +164,7 @@ A solo author should walk the slices in numerical order. A multi-agent fan-out c
 **Goal.** Extend hotspot primitives to polygons and circles. Add HUD control region kinds (`hint`, `menu`, `pause`) — the engine binds behaviour and accessible names to author-marked regions.
 
 **Scope.**
+
 - Schema v4: `Region.shape ∈ { 'rect', 'polygon', 'circle' }`; `polygon: {points: [x,y][]}`; `circle: {cx, cy, r}`. Add region kinds beyond `target`/`reference`: `hint`, `menu`, `pause`. Migrate v3 → v4.
 - Geometry helpers: `pointInPolygon`, `pointInCircle`. Property-based tests against known fixtures.
 - Engine: control region kinds bind to engine actions — `hint` requests a hint, `menu` opens a menu overlay, `pause` toggles pause. (Hint behaviour minimal in this slice — just emits an event; penalty model is S5.)
@@ -184,6 +191,7 @@ If any of those fail, fix before continuing.
 **Goal.** Add a timer (counts elapsed seconds per HOG scene), a score (per-objective value minus per-hint penalty), and the hint logic (highlights an unfound objective; charges penalty; respects per-scene hint budget).
 
 **Scope.**
+
 - Schema v5: `HiddenObjectScene.timer?: { startMs }`, `scoring?: { perObjective, hintPenalty, maxHints }`, `Objective.value?` override. Migrate v4 → v5.
 - `src/engine/score.ts`, `src/engine/hints.ts` — pure modules with exhaustive tests (zero hints, exceeded budget, last-objective-found-after-hint, etc.).
 - Player HUD: timer display, score display, hint button bound to the author-marked hint-control region (from S4). Visual hint = pulse a target hotspot for ~2s.
@@ -199,6 +207,7 @@ If any of those fail, fix before continuing.
 **Goal.** A HOG scene's `onComplete` can branch based on which optional objectives were completed (or other game flags). The fixture game gains a branch leading to one of two ending splash screens.
 
 **Scope.**
+
 - Schema v6: `onComplete` becomes `Action | Action[]`. `Action = { goto } | { setFlag, value } | { reveal, regionId } | { conditional, when: FlagExpr, then: Action, else?: Action }`. `FlagExpr` is a small AST: `flag`, `not`, `and`, `or`, equality. Migrate v5 → v6 (wrap existing `onComplete.gotoSceneId` into `{ goto: ... }`).
 - `src/engine/events.ts` — action dispatcher; pure; tests cover every action plus conditional combinators.
 - `src/engine/flags.ts` — flag store (lives in engineState, not the loaded game).
@@ -219,9 +228,10 @@ Human review confirms: spec §1 criterion 2 ("at least three scene kinds, comple
 
 ### Slice 7 · `audio-intents-and-driver` · Music, SFX, mute, persistence
 
-**Goal.** Engine emits audio *intents*; the player's audio driver plays them. Default SFX ship with the app. Authors can override and add per-scene BGM. Mute + per-channel volumes persist across reloads.
+**Goal.** Engine emits audio _intents_; the player's audio driver plays them. Default SFX ship with the app. Authors can override and add per-scene BGM. Mute + per-channel volumes persist across reloads.
 
 **Scope.**
+
 - Schema v7: `SoundRef = string` (relative path inside the bundle). `Scene.audio?: { bgm?: SoundRef, sfx?: Record<EventName, SoundRef> }`. Game-level `defaultSfx?: Partial<Record<EventName, SoundRef>>`. Migrate v6 → v7.
 - `src/engine/audio.ts` — pure: emits intents `{ kind: 'sfx', name, sound? }` and `{ kind: 'bgm-start' | 'bgm-stop', sound? }` to a subscriber. No `Audio`/`AudioContext` imports.
 - `src/player/audio/driver.ts` — subscribes to engine intents; plays via `HTMLAudioElement` for short SFX and a long-lived element for BGM; crossfade on scene change (configurable, default 500ms).
@@ -249,6 +259,7 @@ Audio works end-to-end; engine remains UI/DOM-free; mute persists; defaults ship
 **Goal.** The Library page accepts a URL pointing at either a `manifest.json` or a `.zip` bundle and loads it. Asset resolution uses an in-memory map for zip-loaded games (no service worker, no fetch from disk).
 
 **Scope.**
+
 - `src/loaders/bundle.ts` — accepts a `Blob`/`ArrayBuffer`, unpacks zip via `jszip` (or equivalent — review dependency in PR), returns `{ manifest, assets: Map<path, Blob> }`. Reject zips > 50 MB by default with a clear error and confirm-to-continue.
 - `src/loaders/url.ts` — sniff `Content-Type` and URL suffix; route to manifest or zip path. HTTP range fetch unsupported in this slice (videos in zips are fully buffered; document the trade-off).
 - Asset-URL resolver: components consume `assetUrl(path)`; for bundled/loose loads this is a relative path string; for zip loads it returns a `blob:` URL minted from the asset map.
@@ -264,6 +275,7 @@ Audio works end-to-end; engine remains UI/DOM-free; mute persists; defaults ship
 **Goal.** The Library page also accepts a local folder (`webkitdirectory`) or a local `.zip` via `<input type="file">`. Touch devices fall back to the file picker (folder pickers are desktop-only — document this).
 
 **Scope.**
+
 - `src/loaders/file.ts` — accepts a `FileList`; if it's a single `.zip`, delegate to `bundle.ts`; otherwise build the asset map directly from `file.webkitRelativePath` entries.
 - Library UI: two buttons — "Open folder" (hidden on touch via media query) and "Open file (.zip)".
 - E2e: Playwright-driven file upload with both a folder fixture and a zip fixture.
@@ -285,6 +297,7 @@ All four load paths work (bundled, URL-manifest, URL-zip, local). Player is feat
 **Goal.** Editor view loads. Upload an image. Draw rectangle hotspots on it. Drafts persist to localStorage.
 
 **Scope.**
+
 - `src/editor/EditorView.tsx`, `src/editor/HotspotCanvas/` (react-konva), `src/state/editorStore.ts` (Zustand + localStorage middleware).
 - Rectangle tool: click-and-drag to draw; click-to-select; drag-to-move; corner-handles to resize; Delete to remove.
 - Tests: store round-trip; canvas component test for draw + select + delete.
@@ -299,6 +312,7 @@ All four load paths work (bundled, URL-manifest, URL-zip, local). Player is feat
 **Goal.** Add polygon (click-to-add-vertex, double-click to close) and circle (click-and-drag-radius) tools. Add the Pairing UI: select a target region, then click a reference region in the HUD strip to bind them as one objective.
 
 **Scope.**
+
 - `src/editor/HotspotCanvas/` extended; geometry helpers reused from S4.
 - `src/editor/Pairing/` — visual mode that shows current target → reference pairings as connector lines on the canvas; click-to-pair / click-to-unpair workflow.
 - Inspector panel surfaces pair state and lets the author edit the `Objective.label`.
@@ -313,6 +327,7 @@ All four load paths work (bundled, URL-manifest, URL-zip, local). Player is feat
 **Goal.** SceneKindPanels for each of the three scene kinds, plus Inspector that edits the selected region's kind (`target` / `reference` / `hint` / `menu` / `pause`) and per-scene fields.
 
 **Scope.**
+
 - `src/editor/SceneKindPanels/HiddenObject/`, `Cutscene/`, `Splash/` — distinct forms.
   - Splash: image upload + advance behaviour (click / key / timeoutMs) + on-advance scene target.
   - Cutscene: video upload + optional VTT upload + skip policy + on-end target.
@@ -330,6 +345,7 @@ All four load paths work (bundled, URL-manifest, URL-zip, local). Player is feat
 **Goal.** A SceneGraph view shows scenes as nodes and transitions as edges. Authors can wire transitions and create branches.
 
 **Scope.**
+
 - `src/editor/SceneGraph/` — react-flow (or a small custom svg renderer — pick in PR; flag if a new dep).
 - Branching editor: a small AST builder for `FlagExpr` and `Action[]` from S6.
 - Validation: warn on unreachable scenes and dangling transitions.
@@ -344,6 +360,7 @@ All four load paths work (bundled, URL-manifest, URL-zip, local). Player is feat
 **Goal.** Export the draft as either a flat folder (browser file-save into a chosen directory via `showDirectoryPicker`, with `<a download>` zip fallback) or a `.zip` bundle. Round-trip the export back through the loader and play it.
 
 **Scope.**
+
 - `src/editor/export.ts` — serialize manifest + collect referenced assets + zip them via `jszip`. Validate output against current Zod schema before download.
 - UI: an Export menu with the two options.
 - E2e (the big one): build a complete game in the editor → export as folder → load via local-folder picker → play through. Then export as `.zip` → load via local-`.zip` picker → play through.
@@ -365,6 +382,7 @@ Major MVP gates passed. Run the full spec §1 checklist; any failures become blo
 **Goal.** The same built `dist/` runs identically (a) on GitHub Pages at `/<repo>/`, (b) at root on any static host, (c) via `file://`. Playwright proves it.
 
 **Scope.**
+
 - `.github/workflows/deploy.yml` — build on push to `main`, publish via `actions/deploy-pages`.
 - `package.json` `release` script — `npm run build && npx zx scripts/zip-dist.mjs` (or shell equivalent) → `dist.zip` artifact.
 - Audit codebase for any absolute paths or origin assumptions (grep for `/assets`, `window.location.origin`, hard-coded `/spyglass/`, etc.).
@@ -380,6 +398,7 @@ Major MVP gates passed. Run the full spec §1 checklist; any failures become blo
 **Goal.** Documentation, coverage gates, and the final tidy-up.
 
 **Scope.**
+
 - `docs/game-format.md` — authoring reference. Every Zod schema field documented. Examples for splash, cutscene, HOG, branching, audio.
 - `docs/architecture.md` — engine/loader/UI/store boundaries; explains the "engine is UI-free" rule and the asset-URL resolver.
 - `README.md` — quickstart for players (Library + open-from-URL), authors (open editor + export), and contributors (`npm install && npm test && npm run dev`).
@@ -410,15 +429,15 @@ MVP complete. Tag `v0.1.0`. Update README with the GitHub Pages URL. Cut a GitHu
 
 ## Risks and trade-offs
 
-| Risk | Where it bites | Mitigation |
-|---|---|---|
-| Konva + react-konva learning curve eats Slice 3 | Slice 3 | Time-box; if blocked at 2 days, drop to plain SVG for rects and revisit Konva in Slice 4 with polygons/circles. |
-| Zip loader memory blow-up for large videos | Slice 8 | 50 MB soft cap with confirm-to-continue; document HTTP-range as post-MVP. |
-| `showDirectoryPicker` not in Safari | Slice 14 | Fall back to zip download for export-as-folder when the API isn't available. |
+| Risk                                                 | Where it bites                  | Mitigation                                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Konva + react-konva learning curve eats Slice 3      | Slice 3                         | Time-box; if blocked at 2 days, drop to plain SVG for rects and revisit Konva in Slice 4 with polygons/circles.                                |
+| Zip loader memory blow-up for large videos           | Slice 8                         | 50 MB soft cap with confirm-to-continue; document HTTP-range as post-MVP.                                                                      |
+| `showDirectoryPicker` not in Safari                  | Slice 14                        | Fall back to zip download for export-as-folder when the API isn't available.                                                                   |
 | `file://` breaks anything via CORS or module loading | All slices, surfaces in Slice 1 | Vite `base: './'` + relative imports + no fetch-from-disk in core flows. CI runs the e2e in `file://` mode from Slice 15 to catch regressions. |
-| Editor scope creep | Phase F | Phase F is sequential and pre-defined; resist adding multi-select, undo/redo, copy/paste until post-MVP. |
-| A11y debt accumulates if deferred | Every UI slice | Lint-style enforcement: a slice without jest-axe + keyboard e2e doesn't merge. |
-| Schema churn breaks downstream slices | Phases B–F | Every schema change ships its migration in the same PR. Legacy fixtures in `tests/fixtures/games/legacy/` regression-test this. |
+| Editor scope creep                                   | Phase F                         | Phase F is sequential and pre-defined; resist adding multi-select, undo/redo, copy/paste until post-MVP.                                       |
+| A11y debt accumulates if deferred                    | Every UI slice                  | Lint-style enforcement: a slice without jest-axe + keyboard e2e doesn't merge.                                                                 |
+| Schema churn breaks downstream slices                | Phases B–F                      | Every schema change ships its migration in the same PR. Legacy fixtures in `tests/fixtures/games/legacy/` regression-test this.                |
 
 ---
 

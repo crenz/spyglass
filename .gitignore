@@ -1,0 +1,23 @@
+node_modules/
+dist/
+dist-ssr/
+coverage/
+.vite/
+.eslintcache
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+.claude/settings.json

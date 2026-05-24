@@ -1,0 +1,24 @@
+{
+  "id": "hello",
+  "version": 1,
+  "title": "Hello, Spyglass",
+  "startScene": "title",
+  "scenes": [
+    {
+      "id": "title",
+      "kind": "splash",
+      "title": "Title",
+      "image": "images/title.png",
+      "advance": { "kind": "click" },
+      "onAdvance": { "gotoSceneId": "intro" }
+    },
+    {
+      "id": "intro",
+      "kind": "splash",
+      "title": "Intro",
+      "image": "images/intro.png",
+      "advance": { "kind": "key" },
+      "onAdvance": { "gotoSceneId": null }
+    }
+  ]
+}
