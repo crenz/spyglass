@@ -4,7 +4,7 @@ import { gameSchema, type Game } from "@/schema/game";
 
 const game: Game = gameSchema.parse({
   id: "hello",
-  version: 2,
+  version: 3,
   title: "Hello",
   startScene: "title",
   scenes: [
@@ -38,6 +38,50 @@ const game: Game = gameSchema.parse({
       title: "End",
       image: "images/end.png",
       advance: { kind: "timeout", timeoutMs: 5000 },
+      onAdvance: { gotoSceneId: null },
+    },
+  ],
+});
+
+const hogGame: Game = gameSchema.parse({
+  id: "hog",
+  version: 3,
+  title: "HOG",
+  startScene: "scene_1",
+  scenes: [
+    {
+      id: "scene_1",
+      kind: "hidden_object",
+      title: "Find things",
+      image: { src: "images/scene-1.png", width: 1024, height: 768 },
+      regions: [
+        { id: "t_a", shape: "rect", rect: { x: 10, y: 10, w: 20, h: 20 } },
+        { id: "r_a", shape: "rect", rect: { x: 100, y: 600, w: 50, h: 50 } },
+        { id: "t_b", shape: "rect", rect: { x: 50, y: 50, w: 30, h: 30 } },
+        { id: "r_b", shape: "rect", rect: { x: 200, y: 600, w: 50, h: 50 } },
+      ],
+      objectives: [
+        {
+          id: "a",
+          label: "A",
+          targetRegionId: "t_a",
+          referenceRegionId: "r_a",
+        },
+        {
+          id: "b",
+          label: "B",
+          targetRegionId: "t_b",
+          referenceRegionId: "r_b",
+        },
+      ],
+      onComplete: { gotoSceneId: "end" },
+    },
+    {
+      id: "end",
+      kind: "splash",
+      title: "End",
+      image: "images/end.png",
+      advance: { kind: "click" },
       onAdvance: { gotoSceneId: null },
     },
   ],
@@ -136,5 +180,109 @@ describe("engine.currentScene", () => {
   it("returns the current scene object", () => {
     const state = init(game);
     expect(currentScene(game, state).id).toBe("title");
+  });
+});
+
+describe("engine.dispatch — hidden_object", () => {
+  it("init seeds an empty foundObjectiveIds map", () => {
+    const state = init(hogGame);
+    expect(state.currentSceneId).toBe("scene_1");
+    expect(state.hiddenObject).toEqual({});
+  });
+
+  it("records a find under the current HOG scene id", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    expect(state.hiddenObject.scene_1?.foundObjectiveIds).toEqual(["a"]);
+    expect(state.currentSceneId).toBe("scene_1");
+  });
+
+  it("is idempotent for the same objective", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    const before = state;
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    expect(state).toBe(before);
+  });
+
+  it("auto-advances when the last objective is found", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    expect(state.currentSceneId).toBe("scene_1");
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "b" });
+    expect(state.currentSceneId).toBe("end");
+    expect(state.history).toEqual(["scene_1"]);
+  });
+
+  it("preserves foundObjectiveIds in state.hiddenObject after auto-advance", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "b" });
+    expect(state.hiddenObject.scene_1?.foundObjectiveIds).toEqual(["a", "b"]);
+  });
+
+  it("throws if find dispatches outside an HOG scene", () => {
+    const state = init(game);
+    expect(() =>
+      dispatch(game, state, { type: "find", objectiveId: "a" }),
+    ).toThrow(EngineError);
+  });
+
+  it("throws if the objective id is unknown to the current scene", () => {
+    const state = init(hogGame);
+    expect(() =>
+      dispatch(hogGame, state, { type: "find", objectiveId: "ghost" }),
+    ).toThrow();
+  });
+
+  it("ignores find after the game is done", () => {
+    let state = init(hogGame);
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "b" });
+    // Auto-advance moved us to splash "end"; advance to null.
+    state = dispatch(hogGame, state, { type: "advance" });
+    expect(state.done).toBe(true);
+    const before = state;
+    state = dispatch(hogGame, state, { type: "find", objectiveId: "a" });
+    expect(state).toBe(before);
+  });
+
+  it("ends the game when onComplete.gotoSceneId is null", () => {
+    const game: Game = gameSchema.parse({
+      id: "hog2",
+      version: 3,
+      title: "HOG2",
+      startScene: "only",
+      scenes: [
+        {
+          id: "only",
+          kind: "hidden_object",
+          image: { src: "images/x.png", width: 100, height: 100 },
+          regions: [
+            { id: "t1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
+            { id: "r1", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+          ],
+          objectives: [
+            {
+              id: "o1",
+              label: "L",
+              targetRegionId: "t1",
+              referenceRegionId: "r1",
+            },
+          ],
+          onComplete: { gotoSceneId: null },
+        },
+      ],
+    });
+    let state = init(game);
+    state = dispatch(game, state, { type: "find", objectiveId: "o1" });
+    expect(state.done).toBe(true);
+  });
+
+  it("does not mutate prior states", () => {
+    const state1 = init(hogGame);
+    const snapshot = JSON.stringify(state1);
+    dispatch(hogGame, state1, { type: "find", objectiveId: "a" });
+    expect(JSON.stringify(state1)).toBe(snapshot);
   });
 });

@@ -15,6 +15,8 @@ type RawGame = Record<string, unknown>;
 const MIGRATIONS: Record<number, (raw: RawGame) => RawGame> = {
   // v1 → v2: additive (cutscene scenes are new but optional). Bump the version.
   1: (raw) => ({ ...raw, version: 2 }),
+  // v2 → v3: additive (hidden_object scenes are new but optional). Bump the version.
+  2: (raw) => ({ ...raw, version: 3 }),
 };
 
 /**

@@ -3,13 +3,14 @@ import {
   gameSchema,
   splashSceneSchema,
   cutsceneSceneSchema,
+  hiddenObjectSceneSchema,
   SCHEMA_VERSION,
 } from "@/schema/game";
 import { migrate, SchemaMigrationError } from "@/schema/migrate";
 
 const validGame = {
   id: "hello",
-  version: 2,
+  version: 3,
   title: "Hello",
   startScene: "title",
   scenes: [
@@ -28,7 +29,34 @@ const validGame = {
       video: "videos/intro.mp4",
       captions: "videos/intro.vtt",
       skipPolicy: { kind: "always" },
-      onEnd: { gotoSceneId: "intro" },
+      onEnd: { gotoSceneId: "scene_1" },
+    },
+    {
+      id: "scene_1",
+      kind: "hidden_object",
+      title: "The library",
+      image: { src: "images/scene-1.png", width: 1024, height: 768 },
+      regions: [
+        { id: "t_key", shape: "rect", rect: { x: 100, y: 100, w: 40, h: 40 } },
+        { id: "r_key", shape: "rect", rect: { x: 50, y: 600, w: 80, h: 80 } },
+        { id: "t_book", shape: "rect", rect: { x: 300, y: 200, w: 60, h: 60 } },
+        { id: "r_book", shape: "rect", rect: { x: 150, y: 600, w: 80, h: 80 } },
+      ],
+      objectives: [
+        {
+          id: "key",
+          label: "Brass key",
+          targetRegionId: "t_key",
+          referenceRegionId: "r_key",
+        },
+        {
+          id: "book",
+          label: "Leather book",
+          targetRegionId: "t_book",
+          referenceRegionId: "r_book",
+        },
+      ],
+      onComplete: { gotoSceneId: "intro" },
     },
     {
       id: "intro",
@@ -42,11 +70,12 @@ const validGame = {
 };
 
 describe("gameSchema", () => {
-  it("round-trips a valid splash + cutscene game", () => {
+  it("round-trips a valid splash + cutscene + HOG game", () => {
     const parsed = gameSchema.parse(validGame);
     expect(parsed.id).toBe("hello");
-    expect(parsed.scenes).toHaveLength(3);
+    expect(parsed.scenes).toHaveLength(4);
     expect(parsed.scenes[1]?.kind).toBe("cutscene");
+    expect(parsed.scenes[2]?.kind).toBe("hidden_object");
   });
 
   it("accepts a timeout-based splash", () => {
@@ -59,7 +88,7 @@ describe("gameSchema", () => {
   });
 
   it("rejects a wrong version", () => {
-    const game = { ...validGame, version: 3 };
+    const game = { ...validGame, version: 4 };
     expect(() => gameSchema.parse(game)).toThrow();
   });
 
@@ -159,7 +188,191 @@ describe("gameSchema", () => {
   });
 
   it("exports the current schema version", () => {
-    expect(SCHEMA_VERSION).toBe(2);
+    expect(SCHEMA_VERSION).toBe(3);
+  });
+});
+
+describe("hiddenObjectSceneSchema", () => {
+  const validHog = {
+    id: "scene_1",
+    kind: "hidden_object",
+    image: { src: "images/scene-1.png", width: 1024, height: 768 },
+    regions: [
+      { id: "t1", shape: "rect", rect: { x: 10, y: 20, w: 30, h: 40 } },
+      { id: "r1", shape: "rect", rect: { x: 50, y: 60, w: 70, h: 80 } },
+    ],
+    objectives: [
+      {
+        id: "obj1",
+        label: "Find me",
+        targetRegionId: "t1",
+        referenceRegionId: "r1",
+      },
+    ],
+    onComplete: { gotoSceneId: null },
+  };
+
+  it("accepts a minimal valid HOG scene", () => {
+    const parsed = hiddenObjectSceneSchema.parse(validHog);
+    expect(parsed.regions).toHaveLength(2);
+    expect(parsed.objectives).toHaveLength(1);
+  });
+
+  it("rejects an HOG scene with zero objectives", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      objectives: [],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an HOG scene with zero regions", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects duplicate region IDs", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        { id: "x", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
+        { id: "x", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+      ],
+      objectives: [
+        {
+          id: "o",
+          label: "L",
+          targetRegionId: "x",
+          referenceRegionId: "x",
+        },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(
+        parsed.error.issues.some((i) =>
+          i.message.toLowerCase().includes("duplicate"),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects duplicate objective IDs", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        { id: "t", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
+        { id: "r", shape: "rect", rect: { x: 20, y: 0, w: 10, h: 10 } },
+      ],
+      objectives: [
+        { id: "o", label: "A", targetRegionId: "t", referenceRegionId: "r" },
+        { id: "o", label: "B", targetRegionId: "t", referenceRegionId: "r" },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(
+        parsed.error.issues.some((i) =>
+          i.message.toLowerCase().includes("duplicate"),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects an objective referencing an unknown target region", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      objectives: [
+        {
+          id: "obj1",
+          label: "L",
+          targetRegionId: "ghost",
+          referenceRegionId: "r1",
+        },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some((i) => i.message.includes("ghost"))).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects an objective referencing an unknown reference region", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      objectives: [
+        {
+          id: "obj1",
+          label: "L",
+          targetRegionId: "t1",
+          referenceRegionId: "ghost",
+        },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an image path with a leading slash", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      image: { src: "/leak.png", width: 100, height: 100 },
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects non-positive image dimensions", () => {
+    const a = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      image: { src: "images/x.png", width: 0, height: 100 },
+    });
+    const b = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      image: { src: "images/x.png", width: 100, height: 0 },
+    });
+    expect(a.success).toBe(false);
+    expect(b.success).toBe(false);
+  });
+
+  it("rejects a rect with non-positive width or height", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        { id: "t1", shape: "rect", rect: { x: 0, y: 0, w: 0, h: 10 } },
+        { id: "r1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects a rect with negative coordinates", () => {
+    const parsed = hiddenObjectSceneSchema.safeParse({
+      ...validHog,
+      regions: [
+        { id: "t1", shape: "rect", rect: { x: -1, y: 0, w: 10, h: 10 } },
+        { id: "r1", shape: "rect", rect: { x: 0, y: 0, w: 10, h: 10 } },
+      ],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects an HOG onComplete pointing to an unknown scene at game level", () => {
+    const game = structuredClone(validGame);
+    const hog = game.scenes[2] as {
+      onComplete: { gotoSceneId: string | null };
+    };
+    hog.onComplete.gotoSceneId = "ghost";
+    const err = gameSchema.safeParse(game);
+    expect(err.success).toBe(false);
+    if (!err.success) {
+      expect(
+        err.error.issues.some((i) => i.message.includes("unknown scene")),
+      ).toBe(true);
+    }
   });
 });
 
@@ -251,6 +464,23 @@ describe("migrate", () => {
     ],
   };
 
+  const legacyV2Game = {
+    id: "hello",
+    version: 2,
+    title: "Hello",
+    startScene: "title",
+    scenes: [
+      {
+        id: "title",
+        kind: "splash",
+        title: "Title",
+        image: "images/title.png",
+        advance: { kind: "click" },
+        onAdvance: { gotoSceneId: null },
+      },
+    ],
+  };
+
   it("passes through a current-version game", () => {
     const parsed = migrate(validGame);
     expect(parsed.id).toBe("hello");
@@ -263,7 +493,13 @@ describe("migrate", () => {
     expect(migrated.scenes[0]?.kind).toBe("splash");
   });
 
-  it("preserves scene content across v1 → v2 migration", () => {
+  it("migrates a v2 game to the current version", () => {
+    const migrated = migrate(legacyV2Game);
+    expect(migrated.version).toBe(SCHEMA_VERSION);
+    expect(migrated.scenes[0]?.kind).toBe("splash");
+  });
+
+  it("preserves scene content across v1 → v3 migration", () => {
     const migrated = migrate(legacyV1Game);
     expect(migrated.scenes).toHaveLength(1);
     expect(migrated.scenes[0]?.id).toBe("title");

@@ -3,6 +3,7 @@ import { usePlayerStore } from "@/state/playerStore";
 import { currentScene } from "@/engine/machine";
 import { Splash } from "./Splash/Splash";
 import { Cutscene } from "./Cutscene/Cutscene";
+import { HiddenObjectScene } from "./HiddenObjectScene/HiddenObjectScene";
 import { A11yLayer } from "./A11yLayer/A11yLayer";
 
 export function PlayerView() {
@@ -35,6 +36,13 @@ export function PlayerView() {
           ) : null}
           {scene.kind === "cutscene" ? (
             <Cutscene scene={scene} loaded={loaded} done={engineState.done} />
+          ) : null}
+          {scene.kind === "hidden_object" ? (
+            <HiddenObjectScene
+              scene={scene}
+              loaded={loaded}
+              done={engineState.done}
+            />
           ) : null}
           <A11yLayer />
         </>

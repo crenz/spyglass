@@ -19,9 +19,9 @@ test.describe("cutscene flow", () => {
   test("advances when the user clicks Skip", async ({ page }) => {
     await goToCutscene(page);
     await page.getByRole("button", { name: /skip/i }).click();
-    await expect(page.getByTestId("splash")).toHaveAttribute(
+    await expect(page.getByTestId("hog-scene")).toHaveAttribute(
       "data-scene-id",
-      "intro",
+      "scene_1",
     );
   });
 
@@ -32,18 +32,18 @@ test.describe("cutscene flow", () => {
     const skip = page.getByRole("button", { name: /skip/i });
     await expect(skip).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("splash")).toHaveAttribute(
+    await expect(page.getByTestId("hog-scene")).toHaveAttribute(
       "data-scene-id",
-      "intro",
+      "scene_1",
     );
   });
 
   test("advances automatically when the video ends", async ({ page }) => {
     await goToCutscene(page);
     // The fixture video is ~2s. Allow generous headroom on slow CI.
-    await expect(page.getByTestId("splash")).toHaveAttribute(
+    await expect(page.getByTestId("hog-scene")).toHaveAttribute(
       "data-scene-id",
-      "intro",
+      "scene_1",
       { timeout: 15_000 },
     );
   });

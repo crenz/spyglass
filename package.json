@@ -18,8 +18,10 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "konva": "^10.3.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-konva": "^19.2.4",
     "zod": "^3.25.76",
     "zustand": "^5.0.13"
   },

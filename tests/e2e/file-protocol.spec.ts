@@ -11,7 +11,7 @@ const fileUrl = pathToFileURL(distIndex).toString();
 test.describe("file:// deployment mode", () => {
   test.use({ baseURL: undefined });
 
-  test("renders the splash + cutscene flow when served from file://", async ({
+  test("renders the splash + cutscene + HOG flow when served from file://", async ({
     page,
   }) => {
     await page.goto(fileUrl);
@@ -25,6 +25,13 @@ test.describe("file:// deployment mode", () => {
 
     await expect(page.getByTestId("cutscene")).toBeVisible();
     await page.getByRole("button", { name: /skip/i }).click();
+
+    const hog = page.getByTestId("hog-scene");
+    await expect(hog).toBeVisible();
+    await expect(hog).toHaveAttribute("data-scene-id", "scene_1");
+    await page.getByRole("button", { name: /brass key/i }).click();
+    await page.getByRole("button", { name: /leather book/i }).click();
+    await page.getByRole("button", { name: /porcelain cup/i }).click();
 
     await expect(splash).toHaveAttribute("data-scene-id", "intro");
   });

@@ -1,16 +1,24 @@
 import type { Game, Scene } from "@/schema/game";
 import { resolveSplashAdvance } from "./scenes/splash";
 import { resolveCutsceneEnd } from "./scenes/cutscene";
+import { resolveHiddenObjectComplete } from "./scenes/hidden_object";
+import { applyFind, isSceneComplete } from "./objectives";
+
+export interface HiddenObjectState {
+  readonly foundObjectiveIds: readonly string[];
+}
 
 export interface EngineState {
   readonly currentSceneId: string;
   readonly history: readonly string[];
   readonly done: boolean;
+  readonly hiddenObject: Readonly<Record<string, HiddenObjectState>>;
 }
 
 export type EngineAction =
   | { type: "advance" }
-  | { type: "goto"; sceneId: string | null };
+  | { type: "goto"; sceneId: string | null }
+  | { type: "find"; objectiveId: string };
 
 export class EngineError extends Error {
   constructor(message: string) {
@@ -30,6 +38,7 @@ export function init(game: Game): EngineState {
     currentSceneId: scene.id,
     history: [],
     done: false,
+    hiddenObject: {},
   };
 }
 
@@ -46,6 +55,8 @@ export function dispatch(
       return advance(game, state);
     case "goto":
       return goto(game, state, action.sceneId);
+    case "find":
+      return find(game, state, action.objectiveId);
   }
 }
 
@@ -69,6 +80,9 @@ function advance(game: Game, state: EngineState): EngineState {
     case "cutscene":
       nextSceneId = resolveCutsceneEnd(scene);
       break;
+    case "hidden_object":
+      nextSceneId = resolveHiddenObjectComplete(scene);
+      break;
   }
   return goto(game, state, nextSceneId);
 }
@@ -80,7 +94,7 @@ function goto(
 ): EngineState {
   if (sceneId === null) {
     return {
-      currentSceneId: state.currentSceneId,
+      ...state,
       history: [...state.history, state.currentSceneId],
       done: true,
     };
@@ -92,10 +106,41 @@ function goto(
     );
   }
   return {
+    ...state,
     currentSceneId: next.id,
     history: [...state.history, state.currentSceneId],
     done: false,
   };
+}
+
+function find(
+  game: Game,
+  state: EngineState,
+  objectiveId: string,
+): EngineState {
+  const scene = currentScene(game, state);
+  if (scene.kind !== "hidden_object") {
+    throw new EngineError(
+      `cannot dispatch "find" in scene "${scene.id}" (kind: ${scene.kind}).`,
+    );
+  }
+  const current =
+    state.hiddenObject[scene.id]?.foundObjectiveIds ?? Object.freeze([]);
+  const { next, changed } = applyFind(scene, current, objectiveId);
+  if (!changed) {
+    return state;
+  }
+  const updated: EngineState = {
+    ...state,
+    hiddenObject: {
+      ...state.hiddenObject,
+      [scene.id]: { foundObjectiveIds: next },
+    },
+  };
+  if (isSceneComplete(scene, next)) {
+    return goto(game, updated, resolveHiddenObjectComplete(scene));
+  }
+  return updated;
 }
 
 function findScene(game: Game, id: string): Scene | undefined {

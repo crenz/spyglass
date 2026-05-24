@@ -43,7 +43,7 @@ const cutsceneNoCaptions: CutsceneScene = cutsceneSceneSchema.parse({
 
 const fixtureGame: Game = gameSchema.parse({
   id: "with_cutscene",
-  version: 2,
+  version: 3,
   title: "With cutscene",
   startScene: "intro_video",
   scenes: [

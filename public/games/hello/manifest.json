@@ -1,6 +1,6 @@
 {
   "id": "hello",
-  "version": 2,
+  "version": 3,
   "title": "Hello, Spyglass",
   "startScene": "title",
   "scenes": [
@@ -19,7 +19,70 @@
       "video": "videos/intro.mp4",
       "captions": "videos/intro.vtt",
       "skipPolicy": { "kind": "always" },
-      "onEnd": { "gotoSceneId": "intro" }
+      "onEnd": { "gotoSceneId": "scene_1" }
+    },
+    {
+      "id": "scene_1",
+      "kind": "hidden_object",
+      "title": "The Library",
+      "image": {
+        "src": "images/scene-1.png",
+        "width": 1024,
+        "height": 768
+      },
+      "regions": [
+        {
+          "id": "t_key",
+          "shape": "rect",
+          "rect": { "x": 80, "y": 180, "w": 80, "h": 80 }
+        },
+        {
+          "id": "t_book",
+          "shape": "rect",
+          "rect": { "x": 420, "y": 260, "w": 90, "h": 80 }
+        },
+        {
+          "id": "t_cup",
+          "shape": "rect",
+          "rect": { "x": 720, "y": 140, "w": 80, "h": 80 }
+        },
+        {
+          "id": "r_key",
+          "shape": "rect",
+          "rect": { "x": 100, "y": 620, "w": 80, "h": 80 }
+        },
+        {
+          "id": "r_book",
+          "shape": "rect",
+          "rect": { "x": 320, "y": 620, "w": 80, "h": 80 }
+        },
+        {
+          "id": "r_cup",
+          "shape": "rect",
+          "rect": { "x": 540, "y": 620, "w": 80, "h": 80 }
+        }
+      ],
+      "objectives": [
+        {
+          "id": "key",
+          "label": "Brass key",
+          "targetRegionId": "t_key",
+          "referenceRegionId": "r_key"
+        },
+        {
+          "id": "book",
+          "label": "Leather book",
+          "targetRegionId": "t_book",
+          "referenceRegionId": "r_book"
+        },
+        {
+          "id": "cup",
+          "label": "Porcelain cup",
+          "targetRegionId": "t_cup",
+          "referenceRegionId": "r_cup"
+        }
+      ],
+      "onComplete": { "gotoSceneId": "intro" }
     },
     {
       "id": "intro",
