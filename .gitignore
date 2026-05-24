@@ -21,3 +21,4 @@ test-results/
 *.log
 npm-debug.log*
 .claude/settings.json
+*.tsbuildinfo
