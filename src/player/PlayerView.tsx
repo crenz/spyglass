@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { usePlayerStore } from "@/state/playerStore";
 import { currentScene } from "@/engine/machine";
 import { Splash } from "./Splash/Splash";
+import { Cutscene } from "./Cutscene/Cutscene";
 import { A11yLayer } from "./A11yLayer/A11yLayer";
 
 export function PlayerView() {
@@ -31,6 +32,9 @@ export function PlayerView() {
         <>
           {scene.kind === "splash" ? (
             <Splash scene={scene} loaded={loaded} done={engineState.done} />
+          ) : null}
+          {scene.kind === "cutscene" ? (
+            <Cutscene scene={scene} loaded={loaded} done={engineState.done} />
           ) : null}
           <A11yLayer />
         </>

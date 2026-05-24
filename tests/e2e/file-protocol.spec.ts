@@ -11,7 +11,9 @@ const fileUrl = pathToFileURL(distIndex).toString();
 test.describe("file:// deployment mode", () => {
   test.use({ baseURL: undefined });
 
-  test("renders the splash flow when served from file://", async ({ page }) => {
+  test("renders the splash + cutscene flow when served from file://", async ({
+    page,
+  }) => {
     await page.goto(fileUrl);
 
     const splash = page.getByTestId("splash");
@@ -20,6 +22,10 @@ test.describe("file:// deployment mode", () => {
     await expect(page.getByRole("img", { name: "Title" })).toBeVisible();
 
     await splash.click();
+
+    await expect(page.getByTestId("cutscene")).toBeVisible();
+    await page.getByRole("button", { name: /skip/i }).click();
+
     await expect(splash).toHaveAttribute("data-scene-id", "intro");
   });
 });

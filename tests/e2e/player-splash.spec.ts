@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("splash flow", () => {
-  test("walks from title → intro → done via click then keyboard", async ({
+  test("walks from title → cutscene → intro → done via click + Skip + keyboard", async ({
     page,
   }) => {
     await page.goto("/");
@@ -14,6 +14,11 @@ test.describe("splash flow", () => {
     await expect(page.getByRole("img", { name: "Title" })).toBeVisible();
 
     await splash.click();
+
+    const cutscene = page.getByTestId("cutscene");
+    await expect(cutscene).toBeVisible();
+    await expect(cutscene).toHaveAttribute("data-scene-id", "intro_video");
+    await page.getByRole("button", { name: /skip/i }).click();
 
     await expect(splash).toHaveAttribute("data-scene-id", "intro");
     await expect(splash).toHaveAttribute("data-advance", "key");
@@ -33,7 +38,10 @@ test.describe("splash flow", () => {
     await expect(splash).toHaveAttribute("data-scene-id", "title");
     await expect(splash).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(splash).toHaveAttribute("data-scene-id", "intro");
+    await expect(page.getByTestId("cutscene")).toHaveAttribute(
+      "data-scene-id",
+      "intro_video",
+    );
   });
 
   test("announces the active scene to assistive tech", async ({ page }) => {

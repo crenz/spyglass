@@ -25,7 +25,7 @@ Legend: `[ ]` pending · `[~]` in progress · `[x]` done · `⛳` human-review c
 
 ## Phase B — Scene kinds
 
-- [ ] **S2 · cutscene-with-captions** — schema v2 cutscene, engine cutscene scene, `<video>` player with captions + skip + muted-first-play, e2e watch-through + skip.
+- [x] **S2 · cutscene-with-captions** — schema v2 cutscene, engine cutscene scene, `<video>` player with captions + skip + muted-first-play, e2e watch-through + skip.
 - [ ] **S3 · hidden-object-basic** — schema v3 rect regions + objectives, `objectives.ts` + tests, react-konva Targets/References + A11y parallel DOM, pointer/touch/keyboard unification, e2e find-all + auto-advance.
 - [ ] **S4 · hotspot-shapes-and-controls** — schema v4 polygon + circle + control region kinds (`hint`/`menu`/`pause`), geometry helpers, control bindings, e2e for each shape.
 

@@ -1,6 +1,6 @@
 {
   "id": "hello",
-  "version": 1,
+  "version": 2,
   "title": "Hello, Spyglass",
   "startScene": "title",
   "scenes": [
@@ -10,7 +10,16 @@
       "title": "Title",
       "image": "images/title.png",
       "advance": { "kind": "click" },
-      "onAdvance": { "gotoSceneId": "intro" }
+      "onAdvance": { "gotoSceneId": "intro_video" }
+    },
+    {
+      "id": "intro_video",
+      "kind": "cutscene",
+      "title": "Intro",
+      "video": "videos/intro.mp4",
+      "captions": "videos/intro.vtt",
+      "skipPolicy": { "kind": "always" },
+      "onEnd": { "gotoSceneId": "intro" }
     },
     {
       "id": "intro",
