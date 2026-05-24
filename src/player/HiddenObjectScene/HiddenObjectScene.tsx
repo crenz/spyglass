@@ -114,11 +114,7 @@ export function HiddenObjectScene({
   const groupLabel = scene.title ?? "Hidden object scene";
 
   return (
-    <div
-      ref={wrapperRef}
-      className="hog-wrapper"
-      data-testid="hog-wrapper"
-    >
+    <div ref={wrapperRef} className="hog-wrapper" data-testid="hog-wrapper">
       <div
         className="hog-scene"
         data-testid="hog-scene"
